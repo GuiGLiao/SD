@@ -65,8 +65,14 @@ public class Main {
                         } else {
                             System.out.print("Digite a palavra: ");
                             String palavra = sc.nextLine();
-                            queue.produce(palavra);
-                            System.out.println("Palavra enviada!");
+                            if (palavra.trim().contains(" ")) {
+                                System.out.println("Warning: Não é permitido enviar palavras com espaço!");
+                            } else if (palavra.trim().isEmpty()) {
+                                System.out.println("Warning: Palavra vazia não é permitida!");
+                            } else {
+                                queue.produce(palavra.trim());
+                                System.out.println("Palavra enviada!");
+                            }
                         }
                         lock.unlock();
                     } else {
