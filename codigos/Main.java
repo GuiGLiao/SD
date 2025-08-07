@@ -1,116 +1,178 @@
 package codigos;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Random;
 import java.util.Scanner;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collections;
-
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 
-
 public class Main {
+    // Define um caminho constante para o nó de submissões
+    private static final String SUBMISSIONS_PATH = "/submissions";
+
     public static void main(String[] args) throws Exception {
         String zkAddress = args.length > 0 ? args[0] : "localhost";
         int barrierSize = args.length > 1 ? Integer.parseInt(args[1]) : 3;
         int minWords = args.length > 2 ? Integer.parseInt(args[2]) : 10;
 
+        // Todos os processos entram na barreira e aguardam o quórum mínimo
+        System.out.println("Procurando grupo... Aguardando " + barrierSize + " participantes na barreira.");
         Barrier barrier = new Barrier(zkAddress, "/barrier", barrierSize);
-        Queue queue = new Queue(zkAddress, "/queue");
+        barrier.enter();
+
+        // Após a barreira ser superada, cada processo entra na eleição para definir seu papel
         Leader leader = new Leader(zkAddress, "/election", "/leader", (int)(Math.random()*1000000));
-
-
+        boolean isModerator = leader.elect();
+        
+        Queue queue = new Queue(zkAddress, "/queue");
         Scanner sc = new Scanner(System.in);
 
-        while (true) {
-            System.out.println("\nDigite:");
-            System.out.println("0 - Enviar palavra");
-            System.out.println("1 - Ver palavras enviadas");
-            System.out.println("2 - Enviar texto final");
-            System.out.println("3 - Palavras restantes para atingir o mínimo");
-            System.out.println("4 - Limpar fila");
-            System.out.println("9 - Sair");
-            System.out.print("Opção: ");
-            int op = sc.nextInt();
-            sc.nextLine(); // consume newline
+        if (isModerator) {
+            System.out.println("\n--- Eleição concluída. Você é o MODERADOR ---");
+            Stat submissionStat = leader.zk.exists(SUBMISSIONS_PATH, false);
+            if (submissionStat == null) {
+                leader.zk.create(SUBMISSIONS_PATH, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
 
-            int restantes = minWords - queue.size();
-            if (restantes < 0) restantes = 0; // Não pode ser negativo
+            // --- INÍCIO DA FUNÇÃO AUTOMATIZADA EM SEGUNDO PLANO ---
+            Thread submissionCleanerThread = new Thread(() -> {
+                while (true) {
+                    try {
+                        List<String> barrierNodes = leader.zk.getChildren("/barrier", false);
+                        int barrierCurrentSize = barrierNodes.size();
 
+                        List<String> submissionNodes = leader.zk.getChildren(SUBMISSIONS_PATH, false);
+                        int submissionsCurrentSize = submissionNodes.size();
 
-            switch (op) {
-                case 0:
-                    // Cria uma instância de lock.
-                    Lock lock = new Lock(zkAddress, "/lock", 1000);
-                    // O método lock() agora bloqueia até que o lock seja adquirido.
-                    if (lock.lock()) {
-                        try {
-                             // Lógica para evitar envio duplo pode ser melhorada.
-                            System.out.print("Envie sua palavra: "); // Mensagem exibida após adquirir o lock
-                            String palavra = sc.nextLine();
-                            if (palavra.trim().contains(" ")) {
-                                System.out.println("Warning: Não é permitido enviar palavras com espaço!");
-                            } else if (palavra.trim().isEmpty()) {
-                                System.out.println("Warning: Palavra vazia não é permitida!");
-                            } else {
-                                queue.produce(palavra.trim());
-                                System.out.println("Palavra enviada!");
+                        // Condição: Limpa se todos os clientes (total na barreira - 1) já enviaram uma palavra
+                        if (barrierCurrentSize > 1 && submissionsCurrentSize > 0 && submissionsCurrentSize >= barrierCurrentSize - 1) {
+                            //System.out.println("\n[AUTO] Todos os clientes enviaram. Limpando o registro de submissões para permitir novos envios...");
+                            
+                            for (String submission : submissionNodes) {
+                                leader.zk.delete(SUBMISSIONS_PATH + "/" + submission, -1);
                             }
-                        } finally {
-                            lock.unlock(); // Garante que o lock seja liberado
+                            //System.out.println("[AUTO] Registro de submissões limpo. Clientes podem enviar novamente.");
                         }
-                    }
-                    break;
-                case 1:
-                    List<String> palavras = queue.getAllStrings();
-                    System.out.println("Palavras enviadas: " + palavras);
-                    break;
-                case 2:
-                    boolean isLeader = leader.elect();
-                    if (isLeader) {
-                        if (restantes == 0) {
-                            List<String> texto = queue.consumeAllStrings();
-                            System.out.println("Texto final: " + String.join(" ", texto));
-                        } else {
-                            System.out.println("Ainda não atingido o mínimo de palavras.");
-                        }
-                        // Aqui você pode adicionar lógica para enviar/salvar o texto
-                    } else {
-                        System.out.println("Warning: Apenas o Líder pode enviar o texto final!");
-                    }
-                    break;
-                case 3:
-                    if (restantes == 0) {
-                        restantes = 0; // Não pode ser negativo
-                        System.out.println("Já atingido o mínimo de palavras.");
+
+                        // Pausa a verificação por 5 segundos
+                        Thread.sleep(5000);
+
+                    } catch (KeeperException | InterruptedException e) {
+                        System.out.println("[AUTO] Thread de limpeza interrompida.");
                         break;
                     }
-                    System.out.println("Palavras restantes para atingir o mínimo: " + restantes);
-                    break;
-                case 4:
-                    //Limpa a fila
-                    queue.clear();
-                    System.out.println("Fila limpa.");
-                    break;
-                case 9:
-                    System.out.println("Saindo...");
-                    sc.close();
-                    // É importante fechar a conexão com o Zookeeper ao sair.
-                    // A classe SyncPrimitive pode ter um método para isso. Ex: SyncPrimitive.close();
-                    return;
-                default:
-                    System.out.println("Opção inválida.");
+                }
+            });
+            
+            submissionCleanerThread.setDaemon(true);
+            submissionCleanerThread.start();
+
+        } else {
+            System.out.println("\n--- Eleição concluída. Você é um CLIENTE ---");
+        }
+
+        int restantes = minWords - queue.size();
+
+        // 3. Loop principal com menus diferentes baseados no papel (Moderador manual e Cliente)
+        while (true) {
+            if (isModerator) {
+                // --- MENU MANUAL DO MODERADOR ---
+                System.out.println("\nOpções de Moderador:");
+                System.out.println("1 - Verificar palavras restantes");
+                System.out.println("2 - Verificar se o texto pode ser enviado");
+                System.out.println("3 - Enviar texto final e reiniciar rodada");
+                System.out.println("9 - Sair");
+                System.out.print("Sua escolha: ");
+                int op = sc.nextInt();
+                sc.nextLine();
+
+                switch (op) {
+                    case 1:
+                        if (restantes < 0) restantes = 0;
+                        System.out.println("Palavras restantes para atingir o mínimo: " + restantes);
+                        break;
+                    case 2:
+                        if (queue.size() >= minWords) {
+                            System.out.println("SIM. O número mínimo de palavras foi atingido. O texto pode ser enviado.");
+                        } else {
+                            System.out.println("NÃO. Ainda faltam palavras.");
+                        }
+                        break;
+                    case 3:
+                        if (queue.size() >= minWords) {
+                            List<String> texto = queue.consumeAllStrings();
+                            System.out.println("Texto final enviado: " + String.join(" ", texto));
+
+                            // Limpeza final de submissões
+                            System.out.println("Limpando o registro de submissões...");
+                            List<String> submissions = leader.zk.getChildren(SUBMISSIONS_PATH, false);
+                            for (String submission : submissions) {
+                                leader.zk.delete(SUBMISSIONS_PATH + "/" + submission, -1);
+                            }
+                            
+                            System.out.println("Iniciando reinicialização da barreira...");
+                            barrier.leave();
+                            System.out.println("Barreira reiniciada. O programa será encerrado.");
+                            return;
+                        } else {
+                            System.out.println("Ainda não é possível enviar, o mínimo de palavras não foi atingido.");
+                        }
+                        break;
+                    case 9:
+                        System.out.println("Saindo e deixando a barreira...");
+                        barrier.leave();
+                        return;
+                    default:
+                        System.out.println("Opção inválida.");
+                }
+            } else {
+                // --- MENU DO CLIENTE ---
+                System.out.println("\nPalavras restantes para atingir o mínimo: " + (minWords - queue.size()));
+                System.out.println("\nOpções de Cliente:");
+                System.out.println("0 - Enviar palavra");
+                System.out.println("9 - Sair");
+                System.out.print("Sua escolha: ");
+                int op = sc.nextInt();
+                sc.nextLine();
+                switch (op) {
+                    case 0:
+                        if(restantes <= 0) {
+                            System.out.println("O número mínimo de palavras já foi atingido. Não é possível enviar mais palavras.");
+                            break;
+                        }
+                        String myId = leader.pathName.replace("/", "_");
+                        Stat mySubmission = leader.zk.exists(SUBMISSIONS_PATH + "/" + myId, false);
+
+                        if (mySubmission != null) {
+                            System.out.println("Você já enviou uma palavra nesta rodada. Aguarde o fim da rodada.");
+                            break;
+                        }
+                        
+                        Lock lock = new Lock(zkAddress, "/lock", 1000);
+                        if (lock.lock()) {
+                            try {
+                                System.out.print("Digite a palavra: ");
+                                String palavra = sc.nextLine();
+                                if (palavra.trim().contains(" ") || palavra.trim().isEmpty()) {
+                                    System.out.println("Warning: Palavra inválida.");
+                                } else {
+                                    queue.produce(palavra.trim());
+                                    System.out.println("Palavra enviada com sucesso!");
+                                    leader.zk.create(SUBMISSIONS_PATH + "/" + myId, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                                }
+                            } finally {
+                                lock.unlock();
+                            }
+                        }
+                        break;
+                    case 9:
+                        System.out.println("Saindo e deixando a barreira...");
+                        barrier.leave();
+                        return;
+                    default:
+                        System.out.println("Opção inválida.");
+                }
             }
         }
     }
