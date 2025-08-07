@@ -1,3 +1,5 @@
+Alterar o local de instalação no .bat e .sh.
+
 Pendências:
 - Barrier não está sendo adicionada em /barrier
 - Leader aparentemente está mudando cada vez que é enviado o texto
