@@ -29,21 +29,25 @@ public class Main {
         Barrier barrier = new Barrier(zkAddress, "/barrier", barrierSize);
         Queue queue = new Queue(zkAddress, "/queue");
         Leader leader = new Leader(zkAddress, "/election", "/leader", (int)(Math.random()*1000000));
-        int restantes = minWords - queue.size();
 
 
         Scanner sc = new Scanner(System.in);
 
         while (true) {
             System.out.println("\nDigite:");
-            System.out.println("0 - enviar palavra");
-            System.out.println("1 - ver palavras enviadas");
-            System.out.println("2 - enviar texto final");
-            System.out.println("3 - palavras restantes para atingir o mínimo");
-            System.out.println("9 - sair");
+            System.out.println("0 - Enviar palavra");
+            System.out.println("1 - Ver palavras enviadas");
+            System.out.println("2 - Enviar texto final");
+            System.out.println("3 - Palavras restantes para atingir o mínimo");
+            System.out.println("4 - Limpar fila");
+            System.out.println("9 - Sair");
             System.out.print("Opção: ");
             int op = sc.nextInt();
             sc.nextLine(); // consume newline
+
+            int restantes = minWords - queue.size();
+            if (restantes < 0) restantes = 0; // Não pode ser negativo
+
 
             switch (op) {
                 case 0:
@@ -104,6 +108,11 @@ public class Main {
                         break;
                     }
                     System.out.println("Palavras restantes para atingir o mínimo: " + restantes);
+                    break;
+                case 4:
+                    //Limpa a fila
+                    queue.clear();
+                    System.out.println("Fila limpa.");
                     break;
                 case 9:
                     System.out.println("Saindo...");

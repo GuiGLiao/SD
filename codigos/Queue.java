@@ -186,4 +186,11 @@ public class Queue extends SyncPrimitive{
             }
             return palavras;
         }
+        
+        public void clear() throws KeeperException, InterruptedException {
+            List<String> list = zk.getChildren(root, false);
+            for (String node : list) {
+                zk.delete(root + "/" + node, 0);
+            }
+        }
 }
