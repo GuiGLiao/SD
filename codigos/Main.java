@@ -51,23 +51,13 @@ public class Main {
 
             switch (op) {
                 case 0:
-                    // Lock para garantir exclusão mútua
+                    // Cria uma instância de lock.
                     Lock lock = new Lock(zkAddress, "/lock", 1000);
+                    // O método lock() agora bloqueia até que o lock seja adquirido.
                     if (lock.lock()) {
-                        // Verifica se já enviou uma palavra (pode ser por variável local ou lógica de negócio)
-                        // Exemplo simples: verifica se já existe uma palavra igual no queue (ajuste conforme sua regra)
-                        List<String> palavrasEnviadas = queue.getAllStrings();
-                        boolean jaEnviou = false;
-                        for (String p : palavrasEnviadas) {
-                            if (p.equalsIgnoreCase("palavra do grupo")) { // Troque por identificação do grupo se necessário
-                                jaEnviou = true;
-                                break;
-                            }
-                        }
-                        if (jaEnviou) {
-                            System.out.println("Warning: Você já enviou uma palavra! Só é permitido uma palavra por rodada.");
-                        } else {
-                            System.out.print("Digite a palavra: ");
+                        try {
+                             // Lógica para evitar envio duplo pode ser melhorada.
+                            System.out.print("Envie sua palavra: "); // Mensagem exibida após adquirir o lock
                             String palavra = sc.nextLine();
                             if (palavra.trim().contains(" ")) {
                                 System.out.println("Warning: Não é permitido enviar palavras com espaço!");
@@ -77,10 +67,9 @@ public class Main {
                                 queue.produce(palavra.trim());
                                 System.out.println("Palavra enviada!");
                             }
+                        } finally {
+                            lock.unlock(); // Garante que o lock seja liberado
                         }
-                        lock.unlock();
-                    } else {
-                        System.out.println("Não foi possível adquirir o lock.");
                     }
                     break;
                 case 1:
@@ -116,6 +105,9 @@ public class Main {
                     break;
                 case 9:
                     System.out.println("Saindo...");
+                    sc.close();
+                    // É importante fechar a conexão com o Zookeeper ao sair.
+                    // A classe SyncPrimitive pode ter um método para isso. Ex: SyncPrimitive.close();
                     return;
                 default:
                     System.out.println("Opção inválida.");

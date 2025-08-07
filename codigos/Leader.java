@@ -52,8 +52,10 @@ public class Leader extends SyncPrimitive{
                     if (s2 != null) {
                         byte[] idLeader = zk.getData(leader, false, s2);
                         System.out.println("Current leader with id: "+new String(idLeader));
-                    }  
-                    
+                    }
+                    // Criação do nó sequencial deve estar dentro do try
+                    this.pathName = zk.create(root + "/n-", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+                    System.out.println("My path name is: "+pathName+" and my id is: "+id+"!");
                 } catch (KeeperException e) {
                     System.out.println("Keeper exception when instantiating queue: " + e.toString());
                 } catch (InterruptedException e) {
@@ -62,10 +64,12 @@ public class Leader extends SyncPrimitive{
             }
         }
         
-        boolean elect() throws KeeperException, InterruptedException{
-        	this.pathName = zk.create(root + "/n-", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-        	System.out.println("My path name is: "+pathName+" and my id is: "+id+"!");
-        	return check();
+        boolean elect() throws KeeperException, InterruptedException {
+            List<String> list = zk.getChildren(root, false);
+            Collections.sort(list);
+            String minString = list.get(0);
+            // O líder é o nó com menor sufixo
+            return this.pathName.endsWith(minString);
         }
         
         boolean check() throws KeeperException, InterruptedException{
@@ -172,6 +176,6 @@ public class Leader extends SyncPrimitive{
         }
     }   
 }
-    
-    
- 
+
+
+
