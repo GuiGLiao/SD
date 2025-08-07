@@ -1,4 +1,9 @@
-Alterar o local de instalação no .bat ou .sh (linux não testado).
+#Instalação
+- Instalar e configurar [ZooKeeper](https://zookeeper.apache.org/doc/r3.5.8/zookeeperStarted.html)
+- Substituir logback.xml na pasta config onde foi instalado o ZooKeeper
+- Alterar o local de instalação em "<code style="color : magenta">set</code> ZK" do .bat ou .sh (linux não testado).
+- 
+
 
 Pendências:
 - ~~Lógica da barreira não esta funcionando~~ 
