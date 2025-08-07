@@ -1,7 +1,7 @@
 #Instalação
 - Instalar e configurar [ZooKeeper](https://zookeeper.apache.org/doc/r3.5.8/zookeeperStarted.html)
 - Substituir logback.xml na pasta config onde foi instalado o ZooKeeper
-- Alterar o local de instalação em "$${\color{red}Red}set$$ ZK" do .bat ou .sh (linux não testado).
+- Alterar o local de instalação em "**set ZK**" do .bat ou .sh (linux não testado).
 - 
 
 
