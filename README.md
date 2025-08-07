@@ -1,4 +1,4 @@
-Alterar o local de instalação no .bat e .sh.
+Alterar o local de instalação no .bat ou .sh (linux não testado).
 
 Pendências:
 - Barrier não está sendo adicionada em /barrier
