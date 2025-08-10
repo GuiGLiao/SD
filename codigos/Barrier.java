@@ -69,7 +69,7 @@ public class Barrier extends SyncPrimitive {
                 List<String> list = zk.getChildren(root, true); //
 
                 if (list.size() < size) { //
-                    System.out.println("Aguardando mais participantes na barreira... (" + list.size() + "/" + size + ")");
+                    System.out.println("Aguardando mais participantes... (" + list.size() + "/" + size + ")");
                     mutex.wait(); //
                 } else {
                     System.out.println("Barreira superada! Iniciando eleição...");

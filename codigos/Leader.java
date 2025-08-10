@@ -55,7 +55,7 @@ public class Leader extends SyncPrimitive{
                     }
                     // Criação do nó sequencial deve estar dentro do try
                     this.pathName = zk.create(root + "/n-", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-                    System.out.println("My path name is: "+pathName+" and my id is: "+id+"!");
+                    //System.out.println("My path name is: "+pathName+" and my id is: "+id+"!");
                 } catch (KeeperException e) {
                     System.out.println("Keeper exception when instantiating queue: " + e.toString());
                 } catch (InterruptedException e) {

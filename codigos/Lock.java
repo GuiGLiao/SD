@@ -55,7 +55,7 @@ public class Lock extends SyncPrimitive {
         // Passo 1: Cria um nó efêmero e sequencial
         pathName = zk.create(root + "/lock-", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
         myNodeName = pathName.substring(root.length() + 1);
-        System.out.println("Meu nó de lock é: " + myNodeName);
+        //System.out.println("Meu nó de lock é: " + myNodeName);
 
         // Loop de espera pelo lock
         while (true) {

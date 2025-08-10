@@ -1,0 +1,12 @@
+Procurando grupo... Aguardando 3 participantes na barreira.
+Keeper exception when instantiating queue: org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /barrier
+Exception in thread "main" org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /barrier/node-
+	at org.apache.zookeeper.KeeperException.create(KeeperException.java:101)
+	at org.apache.zookeeper.KeeperException.create(KeeperException.java:53)
+	at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:1347)
+	at codigos.Barrier.enter(Barrier.java:64)
+	at codigos.Main.main(Main.java:22)
+Procurando grupo... Aguardando 3 participantes na barreira.
+Conectado à barreira com o nó: /barrier/node-0000000063
+Aguardando mais participantes na barreira... (1/3)
+^C
