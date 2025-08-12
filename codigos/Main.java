@@ -26,6 +26,8 @@ public class Main {
         // Após a barreira ser superada, cada processo entra na eleição para definir seu papel
         Leader leader = new Leader(zkAddress, "/election", "/leader", (int)(Math.random()*1000000));
         boolean isModerator = leader.elect();
+		
+		System.out.println("Meu nó de eleição neste processo é: " + leader.pathName);
         
         Queue queue = new Queue(zkAddress, "/queue");
         Scanner sc = new Scanner(System.in);
